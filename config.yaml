@@ -1,0 +1,10 @@
+database:
+    user: root
+    password: root
+    host: localhost
+    database: soundcloudtest
+soundcloud:
+    client_id: 6f35a29781fd9a8379a6a624c73fe5d6
+worker:
+    id: 1
+    download_dir: .
