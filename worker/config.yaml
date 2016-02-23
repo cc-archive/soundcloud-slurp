@@ -1,0 +1,5 @@
+control_server: http://46.101.108.124
+filename_insert_passkey: NzU2YTIwZDRiZGM2
+rsync_remote_path: 
+download_path: /root/tracks
+ssh_key_path: /root/id_rsa

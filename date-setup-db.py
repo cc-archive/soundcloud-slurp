@@ -34,8 +34,7 @@ CREATE TABLE time_slices (
        worker        VARCHAR(20),
        next_href     VARCHAR(255)
 );
-""",
-"""
+""","""
 -- We're not worried about url uniqueness as the results should be unique and
 -- ordered by date.
 
@@ -57,8 +56,7 @@ CREATE TABLE soundcloud_tracks_by_date (
        -- No limit from web UI, truncate if longer
        label_name   VARCHAR(255)      NOT NULL
 );
-""",
-"""
+""","""
 CREATE INDEX permalink_url_index on soundcloud_tracks_by_date (permalink_url);
 """
 ]
