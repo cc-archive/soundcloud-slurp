@@ -1,5 +1,5 @@
 control_server: http://46.101.108.124
 filename_insert_passkey: NzU2YTIwZDRiZGM2
-rsync_remote_path: 
+rsync_remote_path: root@46.43.1.65:/scdl/
 download_path: /root/tracks
 ssh_key_path: /root/id_rsa

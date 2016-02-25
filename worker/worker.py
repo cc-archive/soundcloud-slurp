@@ -1,5 +1,4 @@
-import soundcloud
-import errno, json, os.path, re, requests, shutil, subprocess, yaml
+import errno, json, os.path, re, requests, shutil, signal, subprocess, yaml
 
 ################################################################################
 # Config
@@ -8,7 +7,7 @@ import errno, json, os.path, re, requests, shutil, subprocess, yaml
 TASKS_REQUEST_URL_PATH = 'fetch-tasks.php'
 INSERT_FILENAME_URL_PATH = 'insert-filename.php'
 
-SSH_ARGS = 'ssh -i {0} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null'
+SSH_ARGS = "ssh -i {0} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
 ################################################################################
 # Downloading and rsyncing tracks
@@ -29,8 +28,8 @@ class TasksWorker (object):
                                                     INSERT_FILENAME_URL_PATH)
         self.urls = tasks_desc['urls']
         self.ssh_args = SSH_ARGS.format(config['ssh_key_path'])
-
-    def idToFilename(self, track_id):
+        
+    def idToFilename (self, track_id):
         return track_id + '.mp3'
 
     def idToPath (self, track_id):
@@ -65,17 +64,18 @@ class TasksWorker (object):
     def insertTrackFilename(self, url_id, response):
         disposition = response.headers['content-disposition']
         filename = re.findall("filename=(.+)", disposition)[0]
-        requests.post(self.insert_filename_url, {'passkey':self.passkey,
+        requests.post(self.insert_filename_url, {'pass':self.passkey,
                                                  'track_id': url_id,
                                                  'filename': filename})
 
     def rsync (self):
-        return_code = subprocess.call(['/usr/bin/rsync',
-                                       '-e',
-                                       SSH_ARGS,
-                                       '-r',
-                                       self.download_path,
-                                       self.remote_path])
+        rsync_args = ['/usr/bin/rsync',
+                      '-e',
+                      self.ssh_args,
+                      '-r',
+                      self.download_path,
+                      self.remote_path]
+        return_code = subprocess.call(rsync_args)
         if return_code == 0:
             print "rsync OK"
         else:
@@ -112,10 +112,24 @@ class Worker (object):
         self.config = config
         self.control_server = config['control_server']
 
-    def fetchTaskConfig (self):
+    def jsonConfigCacheFilepath (self):
+        return './task.json'
+    
+    def restorePreviousTaskConfig (self):
+        try:
+            with open(self.jsonConfigCacheFilepath(), 'r') as json_cachefile:
+                config = json.loads(json_cachefile.read())
+        except:
+            # Absent or corrupt file
+            config = False
+        return config
+
+    def fetchNewTaskConfig (self):
         response = requests.get("%s/%s" % (self.control_server,
                                            TASKS_REQUEST_URL_PATH))
         print "GET tasks. HTTP response code: {0}".format(response.status_code)
+        with open(self.jsonConfigCacheFilepath(), 'w') as json_cachefile:
+            print >>json_cachefile, response.text
         return json.loads(response.text)
 
     def workOnTasks (self, config, tasks_desc):
@@ -124,11 +138,14 @@ class Worker (object):
 
     def work (self):
         while True:
-            tasks_desc = self.fetchTaskConfig()
+            tasks_desc = self.restorePreviousTaskConfig()
+            if not tasks_desc:
+                tasks_desc = self.fetchNewTaskConfig()
             if (not tasks_desc) or len(tasks_desc) < 0:
                 break
             print "First id: {0}".format(tasks_desc['urls'][0]['id'])
             self.workOnTasks(self.config, tasks_desc)
+            os.remove(self.jsonConfigCacheFilepath())
 
 ################################################################################
 # Main flow of control

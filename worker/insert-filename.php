@@ -33,7 +33,7 @@ if (! isset($_REQUEST['track_id'])) {
     http_response_code(403);
     exit('No track_id.');
 }
-$track_id = int($_REQUEST['track_id']);
+$track_id = intval($_REQUEST['track_id']);
 
 if (! isset($_REQUEST['filename'])) {
     http_response_code(403);
@@ -51,8 +51,8 @@ $dbh = new PDO($DBDSN, $DBUSER, $DBPASSWORD);
 $insert_statement = $dbh->prepare("INSERT IGNORE INTO track_original_filenames
                                        (track_id, filename)
                                        VALUES (:track_id, :filename)");
-$ok = $store_offset_statement->execute([':track_id' => $track_id,
-                                        ':filename' => $filename]);
+$ok = $insert_statement->execute([':track_id' => $track_id,
+                                  ':filename' => $filename]);
 if ($ok === false) {
     error_log('Couldn\'t save filename "' . $filename . '" for ' . $track_id);
     http_response_code(500);
