@@ -9,6 +9,9 @@ INSERT_FILENAME_URL_PATH = 'insert-filename.php'
 
 SSH_ARGS = "ssh -i {0} -o StrictHostKeyChecking=no -o UserKnownHostsFile=/dev/null"
 
+# 32kb chunks
+CHUNK_SIZE = 1024 * 32
+
 ################################################################################
 # Downloading and rsyncing tracks
 ################################################################################
@@ -45,11 +48,14 @@ class TasksWorker (object):
 
     def saveTrack (self, filepath, response):
         with open(filepath, 'wb') as download_file:
-            download_file.write(response.content)
+            # Avoid being Killed for running out of memory with big files on small VMs
+            for chunk in response.iter_content(chunk_size=CHUNK_SIZE):
+                if chunk:
+                    download_file.write(chunk)
 
     def fetchTrack (self, url):
         url_with_client_id = "{0}?client_id={1}".format(url, self.client_id)
-        return requests.get(url_with_client_id)
+        return requests.get(url_with_client_id, stream=True)
 
     def process (self, url_id, url):
         track_id = [item for item in url.split('/') if item != "" ][-2]
@@ -118,7 +124,7 @@ class Worker (object):
         self.control_server = config['control_server']
 
     def jsonConfigCacheFilepath (self):
-        return './task.json'
+        return './tasks.json'
     
     def restorePreviousTaskConfig (self):
         try:
