@@ -54,6 +54,11 @@ class TasksWorker (object):
     def process (self, url_id, url):
         track_id = [item for item in url.split('/') if item != "" ][-2]
         response = self.fetchTrack(url)
+        # Would be nice to differentiate between bad credentials and newly locked file.
+        # This is for the latter case.
+        if response.status_code == 401:
+            print "Couldn't access {0} (404), skipping.".format(url)
+            return
         self.insertTrackFilename(track_id, response)
         file_directory = os.path.join(self.download_path,
                                       self.idToPath(track_id))
